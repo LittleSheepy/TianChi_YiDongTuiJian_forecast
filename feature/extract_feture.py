@@ -5,8 +5,9 @@ import sys
 import time
 import xgboost as xgb
 from add_feture import *
-FEATURE_EXTRACTION_SLOT = 10
+FEATURE_EXTRACTION_SLOT = 5
 LabelDay = datetime.datetime(2014,12,18,0,0,0)
+print("szTime = " +str(LabelDay.day) )
 Data = pd.read_csv("../DataSet/drop1112_sub_item.csv")
 Data['daystime'] = Data['days'].map(lambda x: time.strptime(x, "%Y-%m-%d")).map(lambda x: datetime.datetime(*x[:6]))
 
@@ -14,20 +15,33 @@ Data['daystime'] = Data['days'].map(lambda x: time.strptime(x, "%Y-%m-%d")).map(
 def get_train(train_user,end_time):
     # 取出label day 前一天的记录作为打标记录
     data_train = train_user[(train_user['daystime'] == (end_time-datetime.timedelta(days=1)))]#&((train_user.behavior_type==3)|(train_user.behavior_type==2))
+    szTime = str(LabelDay.month) + str(LabelDay.day)
+    filePath = "../mid/data_train/"
     # 训练样本中，删除重复的样本
+    data_train.to_csv(filePath + szTime + "data_train1.csv", index = False)
+    #data_train.to_excel("../result/data_train.xls")
     data_train = data_train.drop_duplicates(['user_id', 'item_id'])
+    data_train.to_csv(filePath + szTime + "data_train2.csv", index = False)
+    #data_train.to_excel("../result/data_train_2.xls")
     data_train_ui = data_train['user_id'] / data_train['item_id']
-#    print(len(data_train))
+    data_train_ui.to_csv(filePath + szTime + "data_train_ui.csv", index = False)
+
+    # print(len(data_train))
 
     # 使用label day 的实际购买情况进行打标
     data_label = train_user[train_user['daystime'] == end_time]
+    data_label.to_csv(filePath + szTime + "data_label.csv", index = False)
     data_label_buy = data_label[data_label['behavior_type'] == 4]
+    data_label_buy.to_csv(filePath + szTime + "data_label_buy.csv", index = False)
     data_label_buy_ui = data_label_buy['user_id'] / data_label_buy['item_id']
+    data_label_buy_ui.to_csv(filePath + szTime + "data_label_buy_ui.csv", index = False)
 
     # 对前一天的交互记录进行打标
     data_train_labeled = data_train_ui.isin(data_label_buy_ui)
     dict = {True: 1, False: 0}
     data_train_labeled = data_train_labeled.map(dict)
+    data_train_labeled.to_csv(filePath + szTime + "data_train_labeled.csv", index = False)
+
 
     data_train['label'] = data_train_labeled
     return data_train[['user_id', 'item_id','item_category', 'label']]
@@ -230,8 +244,8 @@ def user_id_feture(data,end_time,beforeoneday):
     user_id_feture = pd.merge(user_id_feture,user_count_before_3,how='left',right_index=True,left_index=True)
     user_id_feture = pd.merge(user_id_feture,user_count_before_2,how='left',right_index=True,left_index=True)
     user_id_feture = pd.merge(user_id_feture,long_online,how='left',right_index=True,left_index=True)
-#    user_id_feture = pd.merge(user_id_feture,buyRate_2,how='left',right_index=True,left_index=True)
-#    user_id_feture = pd.merge(user_id_feture,buyRate_3,how='left',right_index=True,left_index=True)
+    # user_id_feture = pd.merge(user_id_feture,buyRate_2,how='left',right_index=True,left_index=True)
+    # user_id_feture = pd.merge(user_id_feture,buyRate_3,how='left',right_index=True,left_index=True)
     user_id_feture.fillna(0,inplace=True)
     return user_id_feture
 
@@ -266,7 +280,7 @@ def user_item_feture(data,end_time,beforeoneday):
         
     beforeonedayuser_item_count = pd.crosstab([beforeoneday.user_id,beforeoneday.item_id],beforeoneday.behavior_type)
     
-#    _live = user_item_long_touch(data)
+    #    _live = user_item_long_touch(data)
     
     
     max_touchtime = pd.pivot_table(beforeoneday,index=['user_id','item_id'],values=['hours'],aggfunc=[np.min,np.max])
@@ -329,11 +343,13 @@ def user_cate_feture(data,end_time,beforeoneday):
 if __name__ == '__main__':
 #    pass
     result=[]
-    for i in range(15):
+    for i in range(7):
         train_user_window1 = None
         if (LabelDay >= datetime.datetime(2014,12,12,0,0,0)):
+            print(i,"LabelDay = ",LabelDay,LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT+2) )
             train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT+2))) & (Data['daystime'] < LabelDay)]
         else:
+            print(i,"LabelDay = ",LabelDay,LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT) )
             train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (Data['daystime'] < LabelDay)]
 #        train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (Data['daystime'] < LabelDay)]
         beforeoneday = Data[Data['daystime'] == (LabelDay-datetime.timedelta(days=1))]
@@ -375,7 +391,7 @@ if __name__ == '__main__':
             LabelDay = datetime.datetime(2014,12,10,0,0,0)
         result.append(x)
     train_set = pd.concat(result,axis=0,ignore_index=True)
-#    train_set.to_csv('train_train_no_jiagou.csv',index=None)
+    #    train_set.to_csv('train_train_no_jiagou.csv',index=None)
     ###############################################
     
     LabelDay=datetime.datetime(2014,12,18,0,0,0)
@@ -413,7 +429,7 @@ if __name__ == '__main__':
     test = pd.merge(test,add_user_cate_click,left_on = ['user_id','item_category'],right_index=True,how = 'left' )
     test = pd.merge(test,liveday,left_on = ['user_id'],right_index=True,how = 'left' )
     test = test.fillna(0)
-#    test.to_csv('test_test_no_jiagou.csv',index=None)
+    test.to_csv('../result/test_test_no_jiagou.csv',index=None)
 #
 #    sys.exit()
 
@@ -431,11 +447,12 @@ if __name__ == '__main__':
               'objective': 'binary:logistic','eval_metric ':'error', 'min_child_weight': 2.5,#'max_delta_step':10,'gamma':0.1,'scale_pos_weight':230/1,
                'seed': 10}  #
     plst = list(params.items())
+    #train_x.to_csv("../result/train_x.csv", index=False)
     dtrain = xgb.DMatrix(train_x, label=train_y)
     dtest = xgb.DMatrix(test_x)
     bst = xgb.train(plst, dtrain, num_round)
     predicted_proba = bst.predict(dtest)
-    #print(predicted_proba)
+    print(predicted_proba)
 
     predicted_proba = pd.DataFrame(predicted_proba)
     predicted = pd.concat([test[['user_id', 'item_id']], predicted_proba], axis=1)
@@ -454,7 +471,7 @@ if __name__ == '__main__':
 #    predict3 = predicted.iloc[:750, [0, 1]]
 #    # 保存到文件
 #    predict3.to_csv("../result/10_30_2/750_1B80minchildweight1.8.csv", index=False)
-    sys.exit()
+    #sys.exit()
 #    evaluate(predicted)
 
 

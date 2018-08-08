@@ -10,13 +10,6 @@ def user_click(beforesomeday):
 	user_act_count = user_act_count.unstack(fill_value = 0)
 	return user_act_count
 
-#用户各个行为活跃的天数
-def user_liveday(train_user_window1):
-	user_live = train_user_window1.groupby(by = ['user_id','behavior_type']).agg({"daystime":lambda x:x.nunique()})
-	user_live = user_live.unstack(fill_value = 0)
-	return user_live
-
-
 def user_item_click(beforesomeday):
 	user_item_act_count = pd.crosstab([beforesomeday.user_id,beforesomeday.item_id,beforesomeday.behavior_type],beforesomeday.hours)
 	user_item_act_count = user_item_act_count.unstack(fill_value = 0)
@@ -26,6 +19,12 @@ def user_cate_click(beforesomeday):
 	user_cate_act_count = pd.crosstab([beforesomeday.user_id,beforesomeday.item_category,beforesomeday.behavior_type],beforesomeday.hours)
 	user_cate_act_count = user_cate_act_count.unstack(fill_value = 0)
 	return user_cate_act_count
+
+#用户各个行为活跃的天数
+def user_liveday(train_user_window1):
+	user_live = train_user_window1.groupby(by = ['user_id','behavior_type']).agg({"daystime":lambda x:x.nunique()})
+	user_live = user_live.unstack(fill_value = 0)
+	return user_live
 
 def user_item_long_touch(train_user_window1):
 	_live = train_user_window1.groupby(by = ['user_id','item_id']).agg({"daystime":lambda x:(x.max()-x.min()).days})

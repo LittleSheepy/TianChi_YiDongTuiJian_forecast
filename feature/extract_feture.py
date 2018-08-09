@@ -420,7 +420,8 @@ if __name__ == '__main__':
         result.append(x)
 
     train_set = pd.concat(result,axis=0,ignore_index=True)
-    train_set.to_csv('train_train_no_jiagou.csv',index=None)
+    train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
+    #train_set.to_csv('train_train_no_jiagou.csv',index=None)
     ###############################################
     
     LabelDay=datetime.datetime(2014,12,18,0,0,0)
@@ -458,7 +459,8 @@ if __name__ == '__main__':
     test = pd.merge(test,add_user_cate_click,left_on = ['user_id','item_category'],right_index=True,how = 'left' )
     test = pd.merge(test,liveday,left_on = ['user_id'],right_index=True,how = 'left' )
     test = test.fillna(0)
-    test.to_csv('../result/test_test_no_jiagou.csv',index=None)
+    #test.to_csv('../result/test_test_no_jiagou.csv',index=None)
+    test.to_csv(filePath + szTime + 'test_set.csv', index=None)
 #
 #    sys.exit()
 
@@ -472,16 +474,26 @@ if __name__ == '__main__':
     train_x = train_set.drop(['user_id', 'item_id','item_category', 'label'], axis=1).values
     test_x = test.drop(['user_id', 'item_id','item_category'], axis=1).values   
     num_round = 900
-    params = {'max_depth': 4, 'colsample_bytree': 0.8, 'subsample': 0.8, 'eta': 0.02, 'silent': 1,
-              'objective': 'binary:logistic','eval_metric ':'error', 'min_child_weight': 2.5,#'max_delta_step':10,'gamma':0.1,'scale_pos_weight':230/1,
-               'seed': 10}  #
+    params = {
+        'silent': 1,        #当这个参数值为1时，静默模式开启，不会输出任何信息。
+        'max_depth': 4,     #树的最大深度。
+        'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征)。
+        'subsample': 0.8,               #这个参数控制对于每棵树，随机采样的比例。
+        'eta': 0.02,
+        'objective': 'binary:logistic',
+        'eval_metric ':'error',
+        'min_child_weight': 2.5,        #决定最小叶子节点样本权重和
+        'max_delta_step':10,
+        'gamma':0.1,
+        'scale_pos_weight':230/1,
+        'seed': 10}  #
     plst = list(params.items())
     #train_x.to_csv("../result/train_x.csv", index=False)
     dtrain = xgb.DMatrix(train_x, label=train_y)
     dtest = xgb.DMatrix(test_x)
     bst = xgb.train(plst, dtrain, num_round)
     predicted_proba = bst.predict(dtest)
-    print(predicted_proba)
+    print("predicted_proba" , predicted_proba)
 
     predicted_proba = pd.DataFrame(predicted_proba)
     predicted = pd.concat([test[['user_id', 'item_id']], predicted_proba], axis=1)
@@ -493,7 +505,7 @@ if __name__ == '__main__':
 #    # 保存到文件
 #    predict1.to_csv("../result/10_30_2/650_1B80minchildweight1.8.csv", index=False)
     
-    predict2 = predicted.iloc[:500, [0, 1]]
+    predict2 = predicted.iloc[:700, [0, 1]]
     # 保存到文件
     predict2.to_csv("../result/result.csv", index=False)
     

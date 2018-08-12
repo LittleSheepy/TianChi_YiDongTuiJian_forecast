@@ -6,11 +6,11 @@ import time
 import xgboost as xgb
 from add_feture import *
 FEATURE_EXTRACTION_SLOT = 10
-LabelDay = datetime.datetime(2014,12,17,0,0,0)
+LabelDay = datetime.datetime(2014, 12, 17, 0, 0, 0)
 Data = pd.read_csv("../DataSet/drop1112_sub_item.csv")
 Data['daystime'] = Data['days'].map(lambda x: time.strptime(x, "%Y-%m-%d")).map(lambda x: datetime.datetime(*x[:6]))
 szTime = ""
-
+filePath = "../mid/main/"
 def get_train(train_user,end_time):
     # 取出label day 前一天的记录作为打标记录
     data_train = train_user[(train_user['daystime'] == (end_time-datetime.timedelta(days=1)))]#&((train_user.behavior_type==3)|(train_user.behavior_type==2))
@@ -443,141 +443,130 @@ def GetTrainFeaturesEx(trainDays, endDay):
     train_set = pd.concat(result, axis=0, ignore_index=True)
     return train_set
 
-if __name__ == '__main__':
-#    pass
-    filePath = "../mid/main/"
-    szTime = str(LabelDay.month) + str(LabelDay.day)
+def GetTestFeaturesEx(endDay):
+    LabelDay = endDay
+    LabelDay = datetime.datetime(2014, 12, 17, 0, 0, 0)
+    test = get_label_testset(Data, LabelDay)
 
-    TrainEndDay = datetime.datetime(2014,12,17,0,0,0)
-    train_set = GetTrainFeaturesEx(2,TrainEndDay)
-    train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
-    #train_set.to_csv('train_train_no_jiagou.csv',index=None)
-    ###############################################
-    
-    LabelDay=datetime.datetime(2014,12,17,0,0,0)
-    test = get_label_testset(Data,LabelDay)
-
-    train_user_window1 =  Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT-1))) & (Data['daystime'] <= LabelDay)]
+    train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT - 1))) & (
+                Data['daystime'] <= LabelDay)]
     beforeoneday = Data[Data['daystime'] == LabelDay]
-    beforetwoday = Data[(Data['daystime'] >= (LabelDay-datetime.timedelta(days=2))) & (Data['daystime'] < LabelDay)]
-    beforefiveday = Data[(Data['daystime'] >= (LabelDay-datetime.timedelta(days=5))) & (Data['daystime'] < LabelDay)]
+    beforetwoday = Data[(Data['daystime'] >= (LabelDay - datetime.timedelta(days=2))) & (Data['daystime'] < LabelDay)]
+    beforefiveday = Data[(Data['daystime'] >= (LabelDay - datetime.timedelta(days=5))) & (Data['daystime'] < LabelDay)]
     add_user_click = user_click(beforeoneday)
     add_user_item_click = user_item_click(beforeoneday)
     add_user_cate_click = user_cate_click(beforeoneday)
     add_user_click_2 = user_click(beforetwoday)
     add_user_click_5 = user_click(beforefiveday)
     liveday = user_liveday(train_user_window1)
-    a = user_id_feture(train_user_window1, LabelDay,beforeoneday)
+    a = user_id_feture(train_user_window1, LabelDay, beforeoneday)
 
-    b = item_id_feture(train_user_window1, LabelDay,beforeoneday)
+    b = item_id_feture(train_user_window1, LabelDay, beforeoneday)
 
-    c = item_category_feture(train_user_window1, LabelDay,beforeoneday)
+    c = item_category_feture(train_user_window1, LabelDay, beforeoneday)
 
-    d = user_cate_feture(train_user_window1, LabelDay,beforeoneday)
+    d = user_cate_feture(train_user_window1, LabelDay, beforeoneday)
 
-    e = user_item_feture(train_user_window1, LabelDay,beforeoneday)
+    e = user_item_feture(train_user_window1, LabelDay, beforeoneday)
 
-    test = pd.merge(test,a,on=['user_id'],how='left')
-    test = pd.merge(test,b,on=['item_id'],how='left')
-    test = pd.merge(test,c,on=['item_category'],how='left')
-    test = pd.merge(test,d,on=['user_id','item_category'],how='left')
-    test = pd.merge(test,e,on=['user_id','item_id'],how='left')
-    test = pd.merge(test,add_user_click,left_on = ['user_id'],right_index=True,how = 'left' )
-    test = pd.merge(test,add_user_click_2,left_on = ['user_id'],right_index=True,how = 'left' )
-    test = pd.merge(test,add_user_click_5,left_on = ['user_id'],right_index=True,how = 'left' )
-    test = pd.merge(test,add_user_item_click,left_on = ['user_id','item_id'],right_index=True,how = 'left' )
-    test = pd.merge(test,add_user_cate_click,left_on = ['user_id','item_category'],right_index=True,how = 'left' )
-    test = pd.merge(test,liveday,left_on = ['user_id'],right_index=True,how = 'left' )
+    test = pd.merge(test, a, on=['user_id'], how='left')
+    test = pd.merge(test, b, on=['item_id'], how='left')
+    test = pd.merge(test, c, on=['item_category'], how='left')
+    test = pd.merge(test, d, on=['user_id', 'item_category'], how='left')
+    test = pd.merge(test, e, on=['user_id', 'item_id'], how='left')
+    test = pd.merge(test, add_user_click, left_on=['user_id'], right_index=True, how='left')
+    test = pd.merge(test, add_user_click_2, left_on=['user_id'], right_index=True, how='left')
+    test = pd.merge(test, add_user_click_5, left_on=['user_id'], right_index=True, how='left')
+    test = pd.merge(test, add_user_item_click, left_on=['user_id', 'item_id'], right_index=True, how='left')
+    test = pd.merge(test, add_user_cate_click, left_on=['user_id', 'item_category'], right_index=True, how='left')
+    test = pd.merge(test, liveday, left_on=['user_id'], right_index=True, how='left')
     test = test.fillna(0)
-    #test.to_csv('../result/test_test_no_jiagou.csv',index=None)
+
+if __name__ == '__main__':
+#    pass
+    filePath = "../mid/main/"
+    szTime = str(LabelDay.month) + str(LabelDay.day)
+
+    EndDay = datetime.datetime(2014,12,17,0,0,0)
+    train_set = GetTrainFeaturesEx(2,EndDay)
+    train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
+
+    test = GetTestFeaturesEx(EndDay)
     test.to_csv(filePath + szTime + 'test_set.csv', index=None)
-#
-#    sys.exit()
 
     ###############采样
     train_set_1 = train_set[train_set['label']==1]
     train_set_0 = train_set[train_set['label']==0]
     new_train_set_0 = train_set_0.sample(len(train_set_1)*90)
-    train_set = pd.concat([train_set_1,new_train_set_0],axis=0)
+    train_set = pd.concat([train_set_1, new_train_set_0], axis=0)
     ###############
     train_y = train_set['label'].values
     train_x = train_set.drop(['user_id', 'item_id','item_category', 'label'], axis=1).values
     test_x = test.drop(['user_id', 'item_id','item_category'], axis=1).values   
     num_round = 900
-    params = {
-        'silent': 1,        #当这个参数值为1时，静默模式开启，不会输出任何信息。
-        'max_depth': 5,     #树的最大深度3-10。
-        'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征)。
-        'subsample': 0.8,               #这个参数控制对于每棵树，随机采样的比例。
-        'eta': 0.02,
-        'objective': 'binary:logistic',
-        'eval_metric ':'error',
-        'min_child_weight': 1,        #决定最小叶子节点样本权重和
-        'max_delta_step':0,           #
-        'gamma':0,
-        'scale_pos_weight':1,
-        'seed': 10}  #
-    plst = list(params.items())
-    #train_x.to_csv("../result/train_x.csv", index=False)
-    dtrain = xgb.DMatrix(train_x, label=train_y)
-    dtest = xgb.DMatrix(test_x)
-    bst = xgb.train(plst, dtrain, num_round)
-    predicted_proba = bst.predict(dtest)
-    print("predicted_proba" , predicted_proba)
+    step = 0
+    for i in range(20):
+        params = {
+            'silent': 1,        #当这个参数值为1时，静默模式开启，不会输出任何信息。
+            'max_depth': 5,     #树的最大深度3-10。
+            'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征)。
+            'subsample': 0.8,               #这个参数控制对于每棵树，随机采样的比例。
+            'eta': 0.02,
+            'objective': 'binary:logistic',
+            'eval_metric ':'error',
+            'min_child_weight': 1,        #决定最小叶子节点样本权重和
+            'max_delta_step':0,           #
+            'gamma':step,
+            'scale_pos_weight':1,
+            'seed': 10}  #
+        step = step + 1
+        plst = list(params.items())
+        dtrain = xgb.DMatrix(train_x, label=train_y)
+        dtest = xgb.DMatrix(test_x)
+        bst = xgb.train(plst, dtrain, num_round)
+        predicted_proba = bst.predict(dtest)
 
-    predicted_proba = pd.DataFrame(predicted_proba)
-    predicted_proba.to_csv(filePath + szTime + 'predicted_proba.csv', index=None)
+        predicted_proba = pd.DataFrame(predicted_proba)
+        predicted_proba.to_csv(filePath + szTime + 'predicted_proba.csv', index=None)
 
-    predicted = pd.concat([test[['user_id', 'item_id']], predicted_proba], axis=1)
-    predicted.columns = ['user_id','item_id','prob']
-    #print(predicted)
-    predicted = predicted.sort_values('prob',  axis=0,ascending=False)
-    #print(predicted)
-#    predict1 = predicted.iloc[:650, [0, 1]]
-#    # 保存到文件
-#    predict1.to_csv("../result/10_30_2/650_1B80minchildweight1.8.csv", index=False)
-    
-    predict2 = predicted.iloc[:800, [0, 1]]
-    # 保存到文件
-    predicted.to_csv("../result/predict.csv", index=False)
-    predict2.to_csv("../result/result.csv", index=False)
-    
-#    predict3 = predicted.iloc[:750, [0, 1]]
-#    # 保存到文件
-#    predict3.to_csv("../result/10_30_2/750_1B80minchildweight1.8.csv", index=False)
-    #sys.exit()
-#    evaluate(predicted)
+        predicted = pd.concat([test[['user_id', 'item_id']], predicted_proba], axis=1)
+        predicted.columns = ['user_id', 'item_id', 'prob']
+        #print(predicted)
+        predicted = predicted.sort_values('prob',  axis=0, ascending=False)
+
+        result = predicted.iloc[:800, [0, 1]]
+        # 保存到文件
+        predicted.to_csv("../result/predict.csv", index=False)
+        result.to_csv("../result/result.csv", index=False)
 
 
+        #####################################################################线下验证部分
+        predicted = result
+        reference = Data[Data['daystime'] == (LabelDay+datetime.timedelta(days=1))]
+        reference = reference[reference['behavior_type'] == 4]  # 购买的记录
+        reference = reference[['user_id', 'item_id']]  # 获取ui对
+        reference = reference.drop_duplicates(['user_id', 'item_id'])  # 去重
+        ui = predicted['user_id'] / predicted['item_id']
 
+        predicted=predicted[ui.duplicated() == False]
 
-    #####################################################################线下验证部分
-    predicted = predict2
-    reference = Data[Data['daystime'] == (LabelDay+datetime.timedelta(days=1))]
-    reference = reference[reference['behavior_type'] == 4]  # 购买的记录
-    reference = reference[['user_id', 'item_id']]  # 获取ui对
-    reference = reference.drop_duplicates(['user_id', 'item_id'])  # 去重
-    ui = predicted['user_id'] / predicted['item_id']
+        predicted_ui = predicted['user_id'] / predicted['item_id']
+        reference_ui = reference['user_id'] / reference['item_id']
 
-    predicted=predicted[ui.duplicated() == False]
+        is_in = predicted_ui.isin(reference_ui)
+        true_positive = predicted[is_in]
 
-    predicted_ui = predicted['user_id'] / predicted['item_id']
-    reference_ui = reference['user_id'] / reference['item_id']
+        tp = len(true_positive)
+        predictedSetCount = len(predicted)
+        referenceSetCount = len(reference)
 
-    is_in = predicted_ui.isin(reference_ui)
-    true_positive = predicted[is_in]
+        precision = tp / predictedSetCount
+        recall = tp / referenceSetCount
 
-    tp = len(true_positive)
-    predictedSetCount = len(predicted)
-    referenceSetCount = len(reference)
+        f_score = 2 * precision * recall / (precision + recall)
 
-    precision = tp / predictedSetCount
-    recall = tp / referenceSetCount
+        tp = recall * referenceSetCount
+        predictedSetCount = tp / precision
 
-    f_score = 2 * precision * recall / (precision + recall)
-
-    tp = recall * referenceSetCount
-    predictedSetCount = tp / precision
-
-    print('%.8f%%   %.8f   %.8f   %.0f   %.0f' %
-          (f_score * 100, precision, recall, tp, predictedSetCount))
+        print('%.8f%%   %.8f   %.8f   %.0f   %.0f' %
+              (f_score * 100, precision, recall, tp, predictedSetCount))

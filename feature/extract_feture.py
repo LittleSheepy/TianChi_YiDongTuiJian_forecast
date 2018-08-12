@@ -5,8 +5,8 @@ import sys
 import time
 import xgboost as xgb
 from add_feture import *
-FEATURE_EXTRACTION_SLOT = 5
-LabelDay = datetime.datetime(2014,12,18,0,0,0)
+FEATURE_EXTRACTION_SLOT = 10
+LabelDay = datetime.datetime(2014,12,17,0,0,0)
 Data = pd.read_csv("../DataSet/drop1112_sub_item.csv")
 Data['daystime'] = Data['days'].map(lambda x: time.strptime(x, "%Y-%m-%d")).map(lambda x: datetime.datetime(*x[:6]))
 szTime = ""
@@ -29,6 +29,7 @@ def get_train(train_user,end_time):
     data_label = train_user[train_user['daystime'] == end_time]
     data_label.to_csv(filePath + szTime + "data_label.csv", index = False)
     data_label_buy = data_label[data_label['behavior_type'] == 4]
+    print("data_label_buy ",len(data_label_buy))
     data_label_buy.to_csv(filePath + szTime + "data_label_buy.csv", index = False)
     data_label_buy_ui = data_label_buy['user_id'] / data_label_buy['item_id']
     data_label_buy_ui.to_csv(filePath + szTime + "data_label_buy_ui.csv", index = False)
@@ -185,7 +186,7 @@ def user_id_feture(data,end_time,beforeoneday):
     user_count_before5=None
     if (((end_time-datetime.timedelta(days=5))<datetime.datetime(2014,12,13,0,0,0))&((end_time-datetime.timedelta(days=5))>datetime.datetime(2014,12,10,0,0,0))):
         beforefiveday = data[data['daystime']>=end_time-datetime.timedelta(days=5+2)]
-        user_count_before5 = pd.crosstab(beforefiveday.user_id,beforefiveday.behavior_type)
+        user_count_before5 = pd.crosstab(beforefiveday.user_id, beforefiveday.behavior_type)
     else:
         beforefiveday = data[data['daystime']>=end_time-datetime.timedelta(days=5)]
         user_count_before5 = pd.crosstab(beforefiveday.user_id,beforefiveday.behavior_type)
@@ -206,7 +207,6 @@ def user_id_feture(data,end_time,beforeoneday):
         beforethreeday = data[data['daystime']>=end_time-datetime.timedelta(days=7)]
         user_count_before_2 = pd.crosstab(beforethreeday.user_id,beforethreeday.behavior_type)
 
-
     filePath = "../mid/user_id_feture/"
     # 训练样本中，删除重复的样本
     user_count_before5.to_csv(filePath + szTime + "user_count_before5.csv", index = False)
@@ -217,34 +217,50 @@ def user_id_feture(data,end_time,beforeoneday):
     beforeonedayuser_count.to_csv(filePath + szTime + "beforeonedayuser_count.csv", index = False)
 
     countAverage = user_count/FEATURE_EXTRACTION_SLOT
+    countAverage.columns = ["1_" + "typeMean","2_" + "typeMean","3_" + "typeMean","4_" + "typeMean"]
+
     countAverage.to_csv(filePath + szTime + "countAverage.csv", index = False)
     buyRate = pd.DataFrame()
-    buyRate['click'] = user_count[1]/user_count[4]
-    buyRate['skim'] = user_count[2]/user_count[4]
-    buyRate['collect'] = user_count[3]/user_count[4]
+    buyRate['clickAll'] = user_count[1]/user_count[4]
+    buyRate['skimAll'] = user_count[2]/user_count[4]
+    buyRate['collectAll'] = user_count[3]/user_count[4]
     buyRate.index = user_count.index
     buyRate.to_csv(filePath + szTime + "buyRate.csv", index = False)
 
     buyRate_2 = pd.DataFrame()
-    buyRate_2['click'] = user_count_before5[1]/user_count_before5[4]
-    buyRate_2['skim'] = user_count_before5[2]/user_count_before5[4]
-    buyRate_2['collect'] = user_count_before5[3]/user_count_before5[4]
+    buyRate_2['click5d'] = user_count_before5[1]/user_count_before5[4]
+    buyRate_2['skim5d'] = user_count_before5[2]/user_count_before5[4]
+    buyRate_2['collect5d'] = user_count_before5[3]/user_count_before5[4]
     buyRate_2.index = user_count_before5.index
     buyRate_2.to_csv(filePath + szTime + "buyRate_2.csv", index = False)
 
     buyRate_3 = pd.DataFrame()
-    buyRate_3['click'] = user_count_before_3[1]/user_count_before_3[4]
-    buyRate_3['skim'] = user_count_before_3[2]/user_count_before_3[4]
-    buyRate_3['collect'] = user_count_before_3[3]/user_count_before_3[4]
+    buyRate_3['click3d'] = user_count_before_3[1]/user_count_before_3[4]
+    buyRate_3['skim3d'] = user_count_before_3[2]/user_count_before_3[4]
+    buyRate_3['collect3d'] = user_count_before_3[3]/user_count_before_3[4]
     buyRate_3.index = user_count_before_3.index
     buyRate_3.to_csv(filePath + szTime + "buyRate_3.csv", index = False)
+
+    buyRate_4 = pd.DataFrame()
+    buyRate_4['click2d'] = user_count_before_2[1]/user_count_before_2[4]
+    buyRate_4['skim2d'] = user_count_before_2[2]/user_count_before_2[4]
+    buyRate_4['collect2d'] = user_count_before_2[3]/user_count_before_2[4]
+    buyRate_4.index = user_count_before_2.index
+    buyRate_4.to_csv(filePath + szTime + "buyRate_4.csv", index = False)
 
 
     buyRate = buyRate.replace([np.inf, -np.inf], 0)
     buyRate_2 = buyRate_2.replace([np.inf, -np.inf], 0)
     buyRate_3 = buyRate_3.replace([np.inf, -np.inf], 0)
+    buyRate_4 = buyRate_4.replace([np.inf, -np.inf], 0)
 
     long_online = pd.pivot_table(beforeoneday,index=['user_id'],values=['hours'],aggfunc=[np.min,np.max,np.ptp])
+    long_online.columns = ["minOnline","maxOnline","ptpOnline"]
+    user_count.columns = ["1_" + "typeAll", "2_" + "typeAll", "3_" + "typeAll","4_" + "typeAll"]
+    user_count_before5.columns = ["1_" + "typeN5","2_" + "typeN5","3_" + "typeN5","4_" + "typeN5"]
+    user_count_before_3.columns = ["1_" + "typeN3","2_" + "typeN3","3_" + "typeN3","4_" + "typeN3"]
+    user_count_before_2.columns = ["1_" + "typeN2","2_" + "typeN2","3_" + "typeN2","4_" + "typeN2"]
+    beforeonedayuser_count.columns = ["1_" + "typeN1","2_" + "typeN1","3_" + "typeN1","4_" + "typeN1"]
 
     user_id_feture = pd.merge(user_count,beforeonedayuser_count,how='left',right_index=True,left_index=True)
     user_id_feture.to_csv(filePath + szTime + "user_id_feture_user_count.csv", index = False)
@@ -252,13 +268,15 @@ def user_id_feture(data,end_time,beforeoneday):
     user_id_feture = pd.merge(user_id_feture,countAverage,how='left',right_index=True,left_index=True)
     user_id_feture.to_csv(filePath + szTime + "user_id_feture_countAverage.csv", index = False)
 
-    user_id_feture = pd.merge(user_id_feture,buyRate,how='left',right_index=True,left_index=True)
-    user_id_feture = pd.merge(user_id_feture,user_count_before5,how='left',right_index=True,left_index=True)
-    user_id_feture = pd.merge(user_id_feture,user_count_before_3,how='left',right_index=True,left_index=True)
-    user_id_feture = pd.merge(user_id_feture,user_count_before_2,how='left',right_index=True,left_index=True)
+    user_id_feture = pd.merge(user_id_feture,user_count_before5,suffixes=("","_typeN5"),how='left',right_index=True,left_index=True)
+    user_id_feture = pd.merge(user_id_feture,user_count_before_3,suffixes=("","_typeN3"),how='left',right_index=True,left_index=True)
+    user_id_feture = pd.merge(user_id_feture,user_count_before_2,suffixes=("","_typeN2"),how='left',right_index=True,left_index=True)
     user_id_feture = pd.merge(user_id_feture,long_online,how='left',right_index=True,left_index=True)
+    long_online.to_csv(filePath + szTime + "long_online.csv", index = False)
+    user_id_feture = pd.merge(user_id_feture,buyRate,how='left',right_index=True,left_index=True)
     user_id_feture = pd.merge(user_id_feture,buyRate_2,how='left',right_index=True,left_index=True)
     user_id_feture = pd.merge(user_id_feture,buyRate_3,how='left',right_index=True,left_index=True)
+    user_id_feture = pd.merge(user_id_feture,buyRate_4,how='left',right_index=True,left_index=True)
     user_id_feture.fillna(0,inplace=True)
     user_id_feture = user_id_feture.reset_index()
     return user_id_feture
@@ -355,26 +373,29 @@ def user_cate_feture(data,end_time,beforeoneday):
     user_cate_feture = user_cate_feture.reset_index()
     return user_cate_feture
 
-
-if __name__ == '__main__':
-#    pass
-    result=[]
-    for i in range(10):
+def GetTrainFeaturesEx(trainDays, endDay):
+    result = []
+    LabelDay = endDay
+    for i in range(trainDays):
         train_user_window1 = None
-        filePath = "../mid/main/"
-        szTime = str(LabelDay.month) + str(LabelDay.day)
-        if (LabelDay >= datetime.datetime(2014,12,12,0,0,0)):
-            print(i,"LabelDay = ",LabelDay,LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT+2) )
-            train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT+2))) & (Data['daystime'] < LabelDay)]
+        if (LabelDay >= datetime.datetime(2014, 12, 12, 0, 0, 0)):
+            print(i, "LabelDay = ", LabelDay, LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT + 2))
+            train_user_window1 = Data[
+                (Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT + 2))) & (
+                            Data['daystime'] < LabelDay)]
         else:
-            print(i,"LabelDay = ",LabelDay,LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT) )
-            train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (Data['daystime'] < LabelDay)]
-#        train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (Data['daystime'] < LabelDay)]
-        beforeoneday = Data[Data['daystime'] == (LabelDay-datetime.timedelta(days=1))]
+            print(i, "LabelDay = ", LabelDay, LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))
+            train_user_window1 = Data[
+                (Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (
+                            Data['daystime'] < LabelDay)]
+        #        train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT))) & (Data['daystime'] < LabelDay)]
+        beforeoneday = Data[Data['daystime'] == (LabelDay - datetime.timedelta(days=1))]
         beforeoneday.to_csv(filePath + szTime + 'beforeoneday.csv', index=None)
         train_user_window1.to_csv(filePath + szTime + 'train_user_window1.csv', index=None)
-        beforetwoday = Data[(Data['daystime'] >= (LabelDay-datetime.timedelta(days=2))) & (Data['daystime'] < LabelDay)]
-        beforefiveday = Data[(Data['daystime'] >= (LabelDay-datetime.timedelta(days=5))) & (Data['daystime'] < LabelDay)]
+        beforetwoday = Data[
+            (Data['daystime'] >= (LabelDay - datetime.timedelta(days=2))) & (Data['daystime'] < LabelDay)]
+        beforefiveday = Data[
+            (Data['daystime'] >= (LabelDay - datetime.timedelta(days=5))) & (Data['daystime'] < LabelDay)]
         x = get_train(Data, LabelDay)
         add_user_click_1 = user_click(beforeoneday)
         add_user_item_click_1 = user_item_click(beforeoneday)
@@ -388,43 +409,52 @@ if __name__ == '__main__':
         add_user_click_5 = user_click(beforefiveday)
         liveday = user_liveday(train_user_window1)
         # sys.exit()
-        a = user_id_feture(train_user_window1, LabelDay,beforeoneday)
+        a = user_id_feture(train_user_window1, LabelDay, beforeoneday)
 
-        b = item_id_feture(train_user_window1, LabelDay,beforeoneday)
+        b = item_id_feture(train_user_window1, LabelDay, beforeoneday)
 
-        c = item_category_feture(train_user_window1, LabelDay,beforeoneday)
+        c = item_category_feture(train_user_window1, LabelDay, beforeoneday)
 
-        d = user_cate_feture(train_user_window1, LabelDay,beforeoneday)
+        d = user_cate_feture(train_user_window1, LabelDay, beforeoneday)
 
-        e = user_item_feture(train_user_window1, LabelDay,beforeoneday)
+        e = user_item_feture(train_user_window1, LabelDay, beforeoneday)
 
         x.to_csv(filePath + szTime + 'x.csv', index=None)
-        x = pd.merge(x,a,on=['user_id'],how='left')
+        x = pd.merge(x, a, on=['user_id'], how='left')
         a.to_csv(filePath + szTime + 'a.csv', index=None)
         x.to_csv(filePath + szTime + 'x_a.csv', index=None)
-        x = pd.merge(x,b,on=['item_id'],how='left')
-        x = pd.merge(x,c,on=['item_category'],how='left')
-        x = pd.merge(x,d,on=['user_id','item_category'],how='left')
-        x = pd.merge(x,e,on=['user_id','item_id'],how='left')
-        x = pd.merge(x,add_user_click_1,left_on = ['user_id'],right_index=True,how = 'left' )
-        x = pd.merge(x,add_user_click_2,left_on = ['user_id'],right_index=True,how = 'left' )
-        x = pd.merge(x,add_user_click_5,left_on = ['user_id'],right_index=True,how = 'left' )
-        x = pd.merge(x,add_user_item_click_1,left_on = ['user_id','item_id'],right_index=True,how = 'left' )
-        x = pd.merge(x,add_user_cate_click_1,left_on = ['user_id','item_category'],right_index=True,how = 'left' )
-        x = pd.merge(x,liveday,left_on = ['user_id'],right_index=True,how = 'left' )
+        x = pd.merge(x, b, on=['item_id'], how='left')
+        x = pd.merge(x, c, on=['item_category'], how='left')
+        x = pd.merge(x, d, on=['user_id', 'item_category'], how='left')
+        x = pd.merge(x, e, on=['user_id', 'item_id'], how='left')
+        x = pd.merge(x, add_user_click_1, left_on=['user_id'], right_index=True, how='left')
+        x = pd.merge(x, add_user_click_2, left_on=['user_id'], right_index=True, how='left')
+        x = pd.merge(x, add_user_click_5, left_on=['user_id'], right_index=True, how='left')
+        x = pd.merge(x, add_user_item_click_1, left_on=['user_id', 'item_id'], right_index=True, how='left')
+        x = pd.merge(x, add_user_cate_click_1, left_on=['user_id', 'item_category'], right_index=True, how='left')
+        x = pd.merge(x, liveday, left_on=['user_id'], right_index=True, how='left')
         x = x.fillna(0)
-        print(i,LabelDay,len(x))
-        LabelDay = LabelDay-datetime.timedelta(days=1)
-        if (LabelDay == datetime.datetime(2014,12,13,0,0,0)):
-            LabelDay = datetime.datetime(2014,12,10,0,0,0)
+        print(i, LabelDay, len(x))
+        LabelDay = LabelDay - datetime.timedelta(days=1)
+        if (LabelDay == datetime.datetime(2014, 12, 13, 0, 0, 0)):
+            LabelDay = datetime.datetime(2014, 12, 10, 0, 0, 0)
         result.append(x)
 
-    train_set = pd.concat(result,axis=0,ignore_index=True)
+    train_set = pd.concat(result, axis=0, ignore_index=True)
+    return train_set
+
+if __name__ == '__main__':
+#    pass
+    filePath = "../mid/main/"
+    szTime = str(LabelDay.month) + str(LabelDay.day)
+
+    TrainEndDay = datetime.datetime(2014,12,17,0,0,0)
+    train_set = GetTrainFeaturesEx(2,TrainEndDay)
     train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
     #train_set.to_csv('train_train_no_jiagou.csv',index=None)
     ###############################################
     
-    LabelDay=datetime.datetime(2014,12,18,0,0,0)
+    LabelDay=datetime.datetime(2014,12,17,0,0,0)
     test = get_label_testset(Data,LabelDay)
 
     train_user_window1 =  Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT-1))) & (Data['daystime'] <= LabelDay)]
@@ -476,16 +506,16 @@ if __name__ == '__main__':
     num_round = 900
     params = {
         'silent': 1,        #当这个参数值为1时，静默模式开启，不会输出任何信息。
-        'max_depth': 4,     #树的最大深度。
+        'max_depth': 5,     #树的最大深度3-10。
         'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征)。
         'subsample': 0.8,               #这个参数控制对于每棵树，随机采样的比例。
         'eta': 0.02,
         'objective': 'binary:logistic',
         'eval_metric ':'error',
-        'min_child_weight': 2.5,        #决定最小叶子节点样本权重和
-        'max_delta_step':10,
-        'gamma':0.1,
-        'scale_pos_weight':230/1,
+        'min_child_weight': 1,        #决定最小叶子节点样本权重和
+        'max_delta_step':0,           #
+        'gamma':0,
+        'scale_pos_weight':1,
         'seed': 10}  #
     plst = list(params.items())
     #train_x.to_csv("../result/train_x.csv", index=False)
@@ -496,6 +526,8 @@ if __name__ == '__main__':
     print("predicted_proba" , predicted_proba)
 
     predicted_proba = pd.DataFrame(predicted_proba)
+    predicted_proba.to_csv(filePath + szTime + 'predicted_proba.csv', index=None)
+
     predicted = pd.concat([test[['user_id', 'item_id']], predicted_proba], axis=1)
     predicted.columns = ['user_id','item_id','prob']
     #print(predicted)
@@ -505,20 +537,22 @@ if __name__ == '__main__':
 #    # 保存到文件
 #    predict1.to_csv("../result/10_30_2/650_1B80minchildweight1.8.csv", index=False)
     
-    predict2 = predicted.iloc[:700, [0, 1]]
+    predict2 = predicted.iloc[:800, [0, 1]]
     # 保存到文件
+    predicted.to_csv("../result/predict.csv", index=False)
     predict2.to_csv("../result/result.csv", index=False)
     
 #    predict3 = predicted.iloc[:750, [0, 1]]
 #    # 保存到文件
 #    predict3.to_csv("../result/10_30_2/750_1B80minchildweight1.8.csv", index=False)
-    sys.exit()
+    #sys.exit()
 #    evaluate(predicted)
 
 
 
 
     #####################################################################线下验证部分
+    predicted = predict2
     reference = Data[Data['daystime'] == (LabelDay+datetime.timedelta(days=1))]
     reference = reference[reference['behavior_type'] == 4]  # 购买的记录
     reference = reference[['user_id', 'item_id']]  # 获取ui对
@@ -545,5 +579,5 @@ if __name__ == '__main__':
     tp = recall * referenceSetCount
     predictedSetCount = tp / precision
 
-    print('%.8f%% %.8f %.8f %.0f %.0f' %
+    print('%.8f%%   %.8f   %.8f   %.0f   %.0f' %
           (f_score * 100, precision, recall, tp, predictedSetCount))

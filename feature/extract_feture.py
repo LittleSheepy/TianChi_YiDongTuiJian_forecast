@@ -481,6 +481,7 @@ def GetTestFeaturesEx(endDay):
     test = pd.merge(test, add_user_cate_click, left_on=['user_id', 'item_category'], right_index=True, how='left')
     test = pd.merge(test, liveday, left_on=['user_id'], right_index=True, how='left')
     test = test.fillna(0)
+    return test
 
 if __name__ == '__main__':
 #    pass

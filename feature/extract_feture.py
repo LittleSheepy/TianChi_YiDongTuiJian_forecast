@@ -489,7 +489,7 @@ if __name__ == '__main__':
     szTime = str(LabelDay.month) + str(LabelDay.day)
 
     EndDay = datetime.datetime(2014,12,17,0,0,0)
-    train_set = GetTrainFeaturesEx(2,EndDay)
+    train_set = GetTrainFeaturesEx(15,EndDay)
     train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
 
     test = GetTestFeaturesEx(EndDay)

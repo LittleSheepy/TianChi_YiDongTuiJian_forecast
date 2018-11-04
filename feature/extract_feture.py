@@ -45,7 +45,8 @@ def get_train(train_user,end_time):
 
 def get_label_testset(train_user,LabelDay):
     # 测试集选为上一天所有的交互数据
-    data_test = train_user[(train_user['daystime'] == LabelDay)]#&((train_user.behavior_type==3)|(train_user.behavior_type==2))
+    # train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT - 1))) & ( Data['daystime'] <= LabelDay)]
+    data_test = train_user[(train_user['daystime'] > (LabelDay - datetime.timedelta(days=1))) & ( train_user['daystime'] <= LabelDay) ]#&((train_user.behavior_type==3)|(train_user.behavior_type==2)) & (train_user.behavior_type!=4)
     data_test = data_test.drop_duplicates(['user_id', 'item_id'])
     return data_test[['user_id', 'item_id','item_category']]
 
@@ -445,14 +446,13 @@ def GetTrainFeaturesEx(trainDays, endDay):
 
 def GetTestFeaturesEx(endDay):
     LabelDay = endDay
-    LabelDay = datetime.datetime(2014, 12, 17, 0, 0, 0)
     test = get_label_testset(Data, LabelDay)
 
     train_user_window1 = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=FEATURE_EXTRACTION_SLOT - 1))) & (
                 Data['daystime'] <= LabelDay)]
     beforeoneday = Data[Data['daystime'] == LabelDay]
-    beforetwoday = Data[(Data['daystime'] >= (LabelDay - datetime.timedelta(days=2))) & (Data['daystime'] < LabelDay)]
-    beforefiveday = Data[(Data['daystime'] >= (LabelDay - datetime.timedelta(days=5))) & (Data['daystime'] < LabelDay)]
+    beforetwoday = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=2))) & (Data['daystime'] <= LabelDay)]
+    beforefiveday = Data[(Data['daystime'] > (LabelDay - datetime.timedelta(days=5))) & (Data['daystime'] <= LabelDay)]
     add_user_click = user_click(beforeoneday)
     add_user_item_click = user_item_click(beforeoneday)
     add_user_cate_click = user_cate_click(beforeoneday)
@@ -486,12 +486,13 @@ def GetTestFeaturesEx(endDay):
 if __name__ == '__main__':
 #    pass
     filePath = "../mid/main/"
+    LabelDay = datetime.datetime(2014, 12, 17, 0, 0, 0)
     szTime = str(LabelDay.month) + str(LabelDay.day)
 
     EndDay = datetime.datetime(2014,12,17,0,0,0)
-    train_set = GetTrainFeaturesEx(15,EndDay)
+    train_set = GetTrainFeaturesEx(10,EndDay)
     train_set.to_csv(filePath + szTime + 'train_set.csv', index=None)
-
+    EndDay = datetime.datetime(2014,12,18,0,0,0)
     test = GetTestFeaturesEx(EndDay)
     test.to_csv(filePath + szTime + 'test_set.csv', index=None)
 
@@ -504,23 +505,24 @@ if __name__ == '__main__':
     train_y = train_set['label'].values
     train_x = train_set.drop(['user_id', 'item_id','item_category', 'label'], axis=1).values
     test_x = test.drop(['user_id', 'item_id','item_category'], axis=1).values   
-    num_round = 900
-    step = 0
-    for i in range(20):
+    num_round = 1800
+    step = 1
+    for i in range(1):
         params = {
             'silent': 1,        #当这个参数值为1时，静默模式开启，不会输出任何信息。
-            'max_depth': 5,     #树的最大深度3-10。
-            'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征)。
+            'max_depth': 7,     #树的最大深度3-10。
+            'colsample_bytree': 0.8,        #用来控制每棵随机采样的列数的占比(每一列是一个特征0.5-1。
             'subsample': 0.8,               #这个参数控制对于每棵树，随机采样的比例。
             'eta': 0.02,
             'objective': 'binary:logistic',
             'eval_metric ':'error',
-            'min_child_weight': 1,        #决定最小叶子节点样本权重和
+            'min_child_weight': 3,        #决定最小叶子节点样本权重和
             'max_delta_step':0,           #
-            'gamma':step,
+            'gamma':0.2,
             'scale_pos_weight':1,
             'seed': 10}  #
         step = step + 1
+
         plst = list(params.items())
         dtrain = xgb.DMatrix(train_x, label=train_y)
         dtest = xgb.DMatrix(test_x)
@@ -535,14 +537,13 @@ if __name__ == '__main__':
         #print(predicted)
         predicted = predicted.sort_values('prob',  axis=0, ascending=False)
 
-        result = predicted.iloc[:800, [0, 1]]
+        result = predicted.iloc[::800, [0, 1]]
         # 保存到文件
         predicted.to_csv("../result/predict.csv", index=False)
         result.to_csv("../result/result.csv", index=False)
-
-
+'''
         #####################################################################线下验证部分
-        predicted = result
+        predicted = test
         reference = Data[Data['daystime'] == (LabelDay+datetime.timedelta(days=1))]
         reference = reference[reference['behavior_type'] == 4]  # 购买的记录
         reference = reference[['user_id', 'item_id']]  # 获取ui对
@@ -569,5 +570,5 @@ if __name__ == '__main__':
         tp = recall * referenceSetCount
         predictedSetCount = tp / precision
 
-        print('%.8f%%   %.8f   %.8f   %.0f   %.0f' %
-              (f_score * 100, precision, recall, tp, predictedSetCount))
+        print('%.8f%%   %.8f   %.8f   %.0f   %.0f' % (f_score * 100, precision, recall, tp, predictedSetCount))
+'''
